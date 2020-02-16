@@ -1,0 +1,158 @@
+#!/bin/perl
+
+use warnings;
+no warnings 'recursion';
+
+use strict;
+
+
+# Hashes for constant and macro definitions
+my %consts = ();
+my %macros = ();
+
+
+# Configuration
+my $inf = *STDIN;
+my $outf = *STDOUT;
+
+# Command line options
+foreach(@ARGV) {
+    # Perl doesn't allow switch-case for regex
+    # We have to use if-else
+
+    # Output file is -ooutf.asm
+    if($_ =~ /-o(.*)/){
+        open($outf, '>', $1)
+            || die "Unable to open output file $1";
+    
+    # Input file is -iinf.asm or inf.asm
+    # This must go last
+    } elsif($_ =~ /(?:-i)?(.*)/) {
+        open($inf, '<', $1)
+            || die "Unable to open input file $1";
+    }
+}
+
+
+# Processes every individual line
+# The most involved function
+sub process_lines {
+    my (@lines) = @_;
+
+    my $i = 0;
+    while($i < scalar(@lines)) {
+        # Check for compiler directives
+        if($lines[$i] =~ /^#(.*)$/) {
+
+            # Includes
+            if($1 =~ /^include\s+([^\s]+)\s*$/) {
+                open(my $incf, '<', $1);
+                process_file($incf);
+
+            # Constants
+            } elsif($1 =~ /^constant\s+(\S+)\s+(\S+)\s*$/) {
+                $consts{$1} = $2;
+
+            # Macros
+            } elsif($1 =~ /^macro\s+(\S+)\s+(.*)$/) {
+                
+                my $mname = $1;
+                my @mps = split(/\s*,\s*/, $2 =~ s/^\s*|\s*$//gr);
+                my @ls = ();
+
+                $i++;
+                while($i < scalar(@lines) and not $lines[$i] =~ /^#endmacro/) {
+                    push(@ls, $lines[$i]);
+                    $i++;
+                }
+
+                $macros{$mname} = {
+                    'mps' => \@mps,
+                    'ls' => \@ls
+                };
+
+            }
+
+        # For all the normal lines
+        } else {
+
+            # Check for empty lines
+            if($lines[$i] =~ /^\s*$/) {
+                $i++;
+                next;
+            }
+
+            # Check for correct syntax
+            if(not $lines[$i] =~ /^([^;]+)/ or not $1 =~ /(\S*)\s+(\S+)(.*)/) {
+                die "Line has incorrect syntax $lines[$i]";
+            }
+
+            # Break into parts
+            my $label = $1;
+            my $command = $2;
+            my @ps = split(/\s*,\s*/, $3 =~ s/^\s*|\s*$//gr);
+
+            # Checking parameter validity
+            # Also constant substitution
+            foreach(0 .. scalar(@ps)-1) {
+                if($ps[$_] =~ /\s/) {
+                    die "Parameter has incorrect syntax $ps[$_]";
+                } elsif (exists($consts{$ps[$_]})) {
+                    $ps[$_] = $consts{$ps[$_]};
+                }
+            }
+
+            # Macro processing
+            if(exists($macros{$command})) {
+                my @mps = @{$macros{$command}->{'mps'}};
+                my @ls = @{$macros{$command}->{'ls'}};
+
+                if(scalar(@ps) != scalar(@mps)) {
+                    die "Incorrect number of parameters to macro $lines[$i]";
+                }
+
+                # Save values for subroutine call
+                my @saved = ();
+                foreach (0 .. scalar(@mps)-1) {
+                    if(exists($consts{$mps[$_]})) {
+                        push(@saved, $consts{$mps[$_]});
+                    } else {
+                        push(@saved, undef);
+                    }
+
+                    $consts{$mps[$_]} = $ps[$_];
+                }
+
+                process_lines(@ls);
+
+                # Restore the values that need to be
+                foreach(0 .. scalar(@mps)-1) {
+                    if(defined($saved[$_])) {
+                        $consts{$mps[$_]} = $saved[$_];
+                    } else {
+                        delete $consts{$mps[$_]};
+                    }
+                }
+
+
+            } else {
+                $outf -> say("$label $command ", join(", ", @ps));
+            }
+
+        }
+
+        $i++;
+    }
+}
+
+
+# Process an entire file given its file handle
+# Essentially a wapper for process_lines
+sub process_file {
+    my ($pf) = @_;
+
+    process_lines(grep(s/\n$//, <$pf>));
+}
+
+
+process_file($inf);
