@@ -22,9 +22,10 @@ my %macros = ();    # %($name => %{params => @{params}, lines => @{lines}})
 my $inh = *STDIN;   # The input file handle
 my $outh = *STDOUT; # The output file handle
 
-# Also have a separate output file name
-# Needed for cleanup and since we can't go from handle to name
-my $outn = "";
+# Also have a separate output file names
+# Needed for cleanup and for opening
+my $inn = undef;
+my $outn = undef;
 
 
 # FUNCTION PROTOTYPES: ----------
@@ -41,16 +42,27 @@ sub process_lines;
 
 # UTILITY FUNCTIONS: ----------
 
+# cleanup()
+#
+# Essentially just closes the file handles.
+
+sub cleanup {
+    close $inh;     # Fail silently if we can't close
+    close $outh;    # Usually because STDIN/OUT
+}
+
 # fail_out($err)
 #
 # Essentially a wrapper function for `die`. Also does cleanup when called.
 
 sub fail_out {
     my ($err) = @_;
-    close $outh;            # Delete the output file on failure
-    unlink $outn;
-    die "$err\n";           # Again, essentially a wrapper function
-}                           # Newline silences stack trace
+
+    cleanup;
+    unlink $outn                    # Delete the output file on failure
+        unless not defined $outn;
+    die "$err\n";                   # Again, essentially a wrapper function
+}                                   # Newline silences stack trace
 
 # array_it(@xs)
 #
@@ -103,35 +115,31 @@ sub parse_argv {
         # Check for input file
         if($arg eq '-i') {
             # The next parameter should be the file name, so check that
-            my $inn = $arg_it -> ();
+            $inn = $arg_it -> ();
             defined $inn 
                 or fail_out "Must provide filename after `-i` parameter";
-            
-            # Close the last one then open the new file if possible
-            close $inh;
-            open $inh, '<', $inn 
-                or fail_out "Unable to open file for reading '$inn'";
         
         # Check for the output file
         } elsif($arg eq '-o') {
             # Again, get the next argument and do error checking
-            my $oun = $arg_it -> ();
-            defined $oun 
+            $outn = $arg_it -> ();
+            defined $outn 
                 or fail_out "Must provide filename after `-o` parameter";
 
-            # Delete the file that was opened before opening this one
-            close $outh;
-            unlink $outn;
-            open $outh, '>', $oun 
-                or fail_out "Unable to open file for writing '$oun'";
-            $outn = $oun;
-        
         # Default case if argument not recognized
         } else {
             fail_out "Unrecognized option $arg";
         }
 
     }
+
+    # Actually open the files if we need to
+    open $inh, '<', $inn 
+        or fail_out "Unable to open input file '$inn'"
+        unless not defined $inn;
+    open $outh, '<', $outn 
+        or fail_out "Unable to open output file '$outn'"
+        unless not defined $outn;
 }
 
 
@@ -144,15 +152,10 @@ sub process_line {
     my ($line) = @_;
     chomp $line;
 
-    # Check if the line is empty or just a comment
-    # Capture the comment if possible
-    if($line =~ /^\s*(;.*)?$/) {
-        $outh -> say($1);
-
-    # Check if the line is just a label
-    # Again, capture the label
-    } elsif($line =~ /^(\S*)\s*$/) {
-        $outh -> say($1);
+    # Check if the line is empty, just a comment, or a label
+    # Capture the comment and label if possible
+    if($line =~ /^(\S*)\s*((?:;.*)?)$/) {
+        $outh -> say("$1 $2");
     
     # Otherwise, check that the line is of the proper form
     # All lines are an optional label, then a command, then paramters, then 
@@ -168,6 +171,7 @@ sub process_line {
         my @parameters = split /\s*,\s*/, ($3 =~ s/^\s+|\s+$//gr);
 
         # Process constants
+        # We don't check that the parameters have no spaces
         foreach my $i (0 .. $#parameters) {
             # Just substitute in if the constant exists
             # Remember, case insensitivity
@@ -210,9 +214,7 @@ sub process_directive {
 
     # Unrecognized directive
     } else {
-        # Guarunteed to find a match at the very start of the line
-        my $dir = ($line =~ /^#(\S*)/)[0];
-        fail_out "Unrecognized directive $dir";
+        fail_out "Unrecognized directive with `$line`";
     }
 }
 
@@ -236,3 +238,4 @@ sub process_lines {
 
 parse_argv;
 process_lines file_it($inh);
+cleanup;
