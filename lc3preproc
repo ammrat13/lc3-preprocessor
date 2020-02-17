@@ -8,7 +8,7 @@ use warnings;
 
 # We will be seeing a lot of recursive file processing
 # It would be best to go as far as memory allows
-no warnings 'recursion';
+no warnings qw(recursion);
 
 
 # GLOBAL VARIABLES: ----------
@@ -25,6 +25,18 @@ my $outh = *STDOUT; # The output file handle
 # Also have a separate output file name
 # Needed for cleanup and since we can't go from handle to name
 my $outn = "";
+
+
+# FUNCTION PROTOTYPES: ----------
+
+sub fail_out;
+sub array_it;
+sub file_it;
+
+sub parse_argv;
+sub process_line;
+sub process_directive;
+sub process_lines;
 
 
 # UTILITY FUNCTIONS: ----------
@@ -116,7 +128,7 @@ sub parse_argv {
         
         # Default case if argument not recognized
         } else {
-            fail_out "Command-line argument not recognized `$arg`";
+            fail_out "Unrecognized option $arg";
         }
 
     }
@@ -130,7 +142,46 @@ sub parse_argv {
 
 sub process_line {
     my ($line) = @_;
-    $outh -> say($line);
+    chomp $line;
+
+    # Check if the line is empty or just a comment
+    # Capture the comment if possible
+    if($line =~ /^\s*(;.*)?$/) {
+        $outh -> say($1);
+
+    # Check if the line is just a label
+    # Again, capture the label
+    } elsif($line =~ /^(\S*)\s*$/) {
+        $outh -> say($1);
+    
+    # Otherwise, check that the line is of the proper form
+    # All lines are an optional label, then a command, then paramters, then 
+    #   an optional comment
+    # Again, make sure to capture everything
+    } elsif($line =~ /^(\S*)\s+(\S+)\s+([^;]*)((?:;.*)?)$/) {
+
+        my $label = $1;
+        my $command = $2;
+        my $comment = $4;
+        # Don't do this until we have extracted all the others
+        # This will overwrite $1 .. $9 because regex
+        my @parameters = split /\s*,\s*/, ($3 =~ s/^\s+|\s+$//gr);
+
+        # Process constants
+        foreach my $i (0 .. $#parameters) {
+            # Just substitute in if the constant exists
+            # Remember, case insensitivity
+            if(defined $consts{lc $parameters[$i]}) {
+                $parameters[$i] = $consts{lc $parameters[$i]};
+            }
+        }
+
+        $outh -> say("$label $command ".(join ', ', @parameters)." $comment");
+
+    # Line is not properly formatted
+    } else {
+        fail_out "Line incorrectly formatted $line";
+    }
 }
 
 # process_directive($line, $line_it)
@@ -141,7 +192,28 @@ sub process_line {
 
 sub process_directive {
     my ($line, $line_it) = @_;
-    $outh -> say($line =~ s/^#//r);
+    chomp $line;
+
+    # Includes
+    # Ensure there is only one parameter and capture it
+    if($line =~ /^#include\s+(\S+)\s*$/i) {
+        # Just open the file for processing and continue
+        open my $inch, '<', $1 
+            or fail_out "Unable to open included file '$1'";
+        process_lines file_it($inch);
+
+    # Constants
+    # Capture the relavent values during the match
+    } elsif($line =~ /^#constant\s+(\S+)\s+(.*)$/i) {
+        # Use lowercase for case insensitivity
+        $consts{lc $1} = $2;
+
+    # Unrecognized directive
+    } else {
+        # Guarunteed to find a match at the very start of the line
+        my $dir = ($line =~ /^#(\S*)/)[0];
+        fail_out "Unrecognized directive $dir";
+    }
 }
 
 
