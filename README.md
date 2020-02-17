@@ -12,8 +12,7 @@ These can be put in the input file to tell this preprocessor to take special act
 * `#constant NAME VALUE`: Defines the constant `NAME` to have the value `VALUE`. It will be replaced when encountered later in the file being passed as an argument to a command or macro
 * `#macro NAME PARAMETERS`: Defines the macro `NAME` to take a comma-separated list of parameters. The lines following this one and going up to `#endmacro`  are treated as part of the macro. The syntax for usage is the same as for commands, and it will be expanded if encountered later in the file.
 
-## TODO:
+## TODO
 * **Code Refactoring:** The script currently in the repository was written in a day. It works, but not very well. It will have to be rewritten entirely.
-* **Cleanup:** It would be best to delete the output file on failure.
 * **If Statements:** Adding directives for checking whether or not a constant or macro is defined would make for safer code.
 * **Strict Mode:** Once if statements are added, a strict mode can be added where redefining an existing program or macro causes failure.

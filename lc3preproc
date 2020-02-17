@@ -1,0 +1,166 @@
+#!/bin/perl
+
+
+# PREAMBLE: ----------
+
+use strict;
+use warnings;
+
+# We will be seeing a lot of recursive file processing
+# It would be best to go as far as memory allows
+no warnings 'recursion';
+
+
+# GLOBAL VARIABLES: ----------
+
+# Hashes to keep track of the constants and macros
+# Keeps track of the state of the preprocessor
+my %consts = ();    # %($name => $value)
+my %macros = ();    # %($name => %{params => @{params}, lines => @{lines}})
+
+# Global configuration variables
+my $inh = *STDIN;   # The input file handle
+my $outh = *STDOUT; # The output file handle
+
+# Also have a separate output file name
+# Needed for cleanup and since we can't go from handle to name
+my $outn = "";
+
+
+# UTILITY FUNCTIONS: ----------
+
+# fail_out($err)
+#
+# Essentially a wrapper function for `die`. Also does cleanup when called.
+
+sub fail_out {
+    my ($err) = @_;
+    close $outh;            # Delete the output file on failure
+    unlink $outn;
+    die "$err\n";           # Again, essentially a wrapper function
+}                           # Newline silences stack trace
+
+# array_it(@xs)
+#
+# Returns a code pointer to a closure that serves as an iterator over `xs`. 
+# Doesn't seem to be in Perl's default libraries. Simple enough to be rewritten
+# here.
+
+sub array_it {
+    my (@xs) = @_;
+    my $i = -1;         # Account for the fact we increment first
+    return sub {
+        $i++;           # Increment before the return statement since it stops
+        return $xs[$i]; # execution of this closure
+    };
+}
+
+# file_it($fh)
+#
+# Returns a code pointer to an iterator over the lines of the file `fh`. Note 
+# that the file handle itself is passed rather than the file name. This 
+# function is provided by default with Perl, but with different syntax. We wrap 
+# it here for code reuse.
+
+sub file_it {
+    my ($fh) = @_;
+    return sub {
+        return <$fh>;       # We wrap the iterator for the file handle, simply 
+    };                      # echoing its contents
+}
+
+
+# MAIN SUBROUTINES: ----------
+
+# parse_argv()
+#
+# Void function that modifies global variables. Parses the command line 
+# arguments supplied and sets the global variables accordingly. See `README.md`
+# for more details. Note that it doesn't forbid having many of the same option,
+# and it simply disregards all but the last one.
+
+sub parse_argv {
+    # Simply iterate over all the arguments
+    # Note that we sometimes take another element inside the loop. This is 
+    #   intended behavior as it allows us to take parameters to arguments 
+    #   without having to mess with indices.
+
+    my $arg_it = array_it(@ARGV);
+    while(my $arg = $arg_it -> ()) {
+
+        # Check for input file
+        if($arg eq '-i') {
+            # The next parameter should be the file name, so check that
+            my $inn = $arg_it -> ();
+            defined $inn 
+                or fail_out "Must provide filename after `-i` parameter";
+            
+            # Close the last one then open the new file if possible
+            close $inh;
+            open $inh, '<', $inn 
+                or fail_out "Unable to open file for reading '$inn'";
+        
+        # Check for the output file
+        } elsif($arg eq '-o') {
+            # Again, get the next argument and do error checking
+            my $oun = $arg_it -> ();
+            defined $oun 
+                or fail_out "Must provide filename after `-o` parameter";
+
+            # Delete the file that was opened before opening this one
+            close $outh;
+            unlink $outn;
+            open $outh, '>', $oun 
+                or fail_out "Unable to open file for writing '$oun'";
+            $outn = $oun;
+        
+        # Default case if argument not recognized
+        } else {
+            fail_out "Command-line argument not recognized `$arg`";
+        }
+
+    }
+}
+
+
+# process_line($line)
+#
+# Processes a non-directive line `$line`. Will also do macro and constant 
+# expansion based on the current state of the relavent hashes.
+
+sub process_line {
+    my ($line) = @_;
+    $outh -> say($line);
+}
+
+# process_directive($line, $line_it)
+#
+# Processes a line that is a directive. Note that it takes the libne iterator 
+# as a parameter since it may need to advance it, for instance when parsing 
+# macros.
+
+sub process_directive {
+    my ($line, $line_it) = @_;
+    $outh -> say($line =~ s/^#//r);
+}
+
+
+# process_lines($line_it)
+#
+# Takes in an iterator on the lines to process. It does its processing and 
+# outputs them to the appropriate place. It is essentially a wrapper function 
+# for `process_directive` and `process_line`.
+
+sub process_lines {
+    my ($line_it) = @_;
+    while(my $line = $line_it -> ()) {
+        # Check if the line is a preprocessor directive
+        $line =~ /^#/ ? process_directive($line, $line_it) : process_line($line);
+    }
+}
+
+
+# MAIN PROCEDURE: ----------
+
+parse_argv;
+process_lines file_it($inh);
