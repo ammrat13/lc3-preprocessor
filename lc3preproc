@@ -93,6 +93,30 @@ sub file_it {
     };                      # echoing its contents
 }
 
+# read_until($it, $arr, $end)
+#
+# Expects an iterator on strings as input. Reads from that iterator until a 
+# line matching `$end` is hit or the iterator is exhausted. Appends the 
+# resulting list into @$arr. Returns false if hit the end or true if iterator 
+# was exhausted.
+
+sub read_until {
+    my ($it, $arr, $end) = @_;
+
+    my $failure = 1;
+    while(my $line = $it -> ()) {
+        chomp $line;
+        if($line =~ $end) {
+            $failure = 0;
+            last;
+        } else {
+            push @$arr, $line;
+        }
+    }
+
+    return $failure;
+}
+
 
 # MAIN SUBROUTINES: ----------
 
@@ -171,13 +195,58 @@ sub process_line {
         my @parameters = split /\s*,\s*/, ($3 =~ s/^\s+|\s+$//gr);
 
         # Process constants
-        # We don't check that the parameters have no spaces
+        # Also check that the parameters have no spaces
         foreach my $i (0 .. $#parameters) {
+            # Fail if a parameter has whitespace
+            if($parameters[$i] =~ /\s/) {
+                fail_out "Parameter $parameters[$i] has whitespace on `$line`";
+            }
+
             # Just substitute in if the constant exists
             # Remember, case insensitivity
             if(defined $consts{lc $parameters[$i]}) {
                 $parameters[$i] = $consts{lc $parameters[$i]};
             }
+        }
+
+        # Process macros
+        # Save the current state of the constants and substitute in local vars
+        # This is what I meant when I said `%consts` keeps track of state
+        if(defined $macros{$command}) {
+            my @mps = @{%{$macros{$command}}{params}};
+            my @mls = @{%{$macros{$command}}{lines}};
+
+            # Check that we got the same number of parameters as needed
+            if(scalar @parameters != scalar @mps) {
+                fail_out "Incorrect number of parameters to macro on `$line`";
+            }
+
+            # Save the old state of the variables then set them to new
+            # We essentially use `@saved` as our callstack
+            my @saved = ();
+            foreach my $i (0 .. $#mps) {
+                # Case insensitivity
+                push @saved, $consts{lc $mps[$i]};         # Okay if undefined
+                $consts{lc $mps[$i]} = $parameters[$i];
+            }
+
+            # Process the lines in the macro
+            process_lines array_it(@mls);
+
+            # Restore state
+            for my $i (0 .. $#mps) {
+                # Again, case insensitivity
+                if(defined $saved[$i]) {
+                    # If we saved a value, reset it
+                    $consts{lc $mps[$i]} = $saved[$i];
+                } else {
+                    # If it wasn't there before, delete it
+                    delete $consts{lc $mps[$i]};
+                }
+            }
+
+            # We already processed this line, so don't print
+            return;
         }
 
         $outh -> say("$label $command ".(join ', ', @parameters)." $comment");
@@ -211,6 +280,25 @@ sub process_directive {
     } elsif($line =~ /^#constant\s+(\S+)\s+(.*)$/i) {
         # Use lowercase for case insensitivity
         $consts{lc $1} = $2;
+
+    # Macros
+    # Capture the name and parameter list
+    } elsif($line =~ /^#macro\s+(\S+)\s+(.*)$/i) {
+
+        # Save the matches for later
+        my $mname = $1;
+        my @ps = split /\s*,\s*/, ($2 =~ s/^\s*|\s*$//r);
+        my @ls = ();
+
+        # Read in-place and check that it succeeded
+        if(read_until $line_it, \@ls, qr/^#endmacro\s*$/) {
+            fail_out "Unclosed macro `$mname`";
+        }
+
+        $macros{$mname} = {
+            params => \@ps,
+            lines  => \@ls
+        };
 
     # Unrecognized directive
     } else {

@@ -13,6 +13,6 @@ These can be put in the input file to tell this preprocessor to take special act
 * `#macro NAME PARAMETERS`: Defines the macro `NAME` to take a comma-separated list of parameters. The lines following this one and going up to `#endmacro`  are treated as part of the macro. The syntax for usage is the same as for commands, and it will be expanded if encountered later in the file.
 
 ## TODO
-* **Code Refactoring:** The script currently in the repository was written in a day. It works, but not very well. It will have to be rewritten entirely.
+* **Code Review:** Get someone else to look at this code to make sure it is sane
 * **If Statements:** Adding directives for checking whether or not a constant or macro is defined would make for safer code.
 * **Strict Mode:** Once if statements are added, a strict mode can be added where redefining an existing program or macro causes failure.
