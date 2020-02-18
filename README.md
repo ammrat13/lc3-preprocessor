@@ -8,6 +8,7 @@ Not all valid LC-3 Assembly files will work with this preprocessor. Perhaps most
 The script is written in Perl, which should be installed by default on most Linux distributions. To run it, first ensure that Perl is installed and that the first line of the script is `#!/absolute/path/to/perl`. Then, run it as any other program with the following options:
 * `-i input_file.asm`: Sets a file to be the input to this program. Default is standard input.
 * `-o output_file.asm`: Sets a file to be the output of this program. Default is standard output.
+* `-l`: Switches to lazy mode from the default strict mode. Will not fail when constants and macros are redefined.
 
 ## Directives
 These can be put in the input file to tell this preprocessor to take special action. They must be put at the start of the line with no leading whitespace, just like Assembly labels. All preprocessor directives start with a `#` and are case-insensitive.
