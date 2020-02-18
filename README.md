@@ -14,6 +14,7 @@ These can be put in the input file to tell this preprocessor to take special act
 * `#include include_file.asm`: Places the content of `include_file.asm` into the output, recursively expanding preprocessor directives
 * `#constant NAME VALUE`: Defines the constant `NAME` to have the value `VALUE`. It will be replaced when encountered later in the file being passed as an argument to a command or macro
 * `#macro NAME PARAMETERS`: Defines the macro `NAME` to take a comma-separated list of parameters. The lines following this one and going up to `#endmacro`  are treated as part of the macro. The syntax for usage is the same as for commands, and it will be expanded if encountered later in the file.
+* `#if(n?)(c|m) NAME`: Checks if the symbol `NAME` is defined -- as a constant if `c` is asserted, or as a macro if `m` is. The result is inverted if the `n` is present. If the result comes out to true, preprocess the lines up to the `#endif`, otherwise ignore them.
 
 ## TODO
 * **Code Review:** Get someone else to look at this code to make sure it is sane

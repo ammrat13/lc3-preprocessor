@@ -301,7 +301,7 @@ sub process_directive {
         };
 
     # If Directives
-    } elsif($line =~ /^#if(n?)(c|m)\s+(\S+)$/) {
+    } elsif($line =~ /^#if(n?)(c|m)\s+(\S+)$/i) {
 
         # Choose between constants and macros
         # Invert if needed
