@@ -213,8 +213,8 @@ sub process_line {
         # Save the current state of the constants and substitute in local vars
         # This is what I meant when I said `%consts` keeps track of state
         if(defined $macros{$command}) {
-            my @mps = @{%{$macros{$command}}{params}};
-            my @mls = @{%{$macros{$command}}{lines}};
+            my @mps = @{%{$macros{lc $command}}{params}};
+            my @mls = @{%{$macros{lc $command}}{lines}};
 
             # Check that we got the same number of parameters as needed
             if(scalar @parameters != scalar @mps) {
@@ -294,10 +294,30 @@ sub process_directive {
             fail_out "Unclosed macro `$mname`";
         }
 
-        $macros{$mname} = {
+        # Remember, case insensitivity
+        $macros{lc $mname} = {
             params => \@ps,
             lines  => \@ls
         };
+
+    # If Directives
+    } elsif($line =~ /^#if(n?)(c|m)\s+(\S+)$/) {
+
+        # Choose between constants and macros
+        # Invert if needed
+        # Also, case insensitivity
+        my $do = ($1 xor 
+            ($2 eq "c" ? defined $consts{lc $3} : defined $macros{lc $3}));
+        
+        # Again, read and check for success
+        my @ls = ();
+        if(read_until $line_it, \@ls, qr/^#endif\s*$/) {
+            fail_out "Uncosed `$line`"
+        }
+
+        if($do){
+            process_lines array_it(@ls);
+        }
 
     # Unrecognized directive
     } else {

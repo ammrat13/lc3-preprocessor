@@ -17,5 +17,4 @@ These can be put in the input file to tell this preprocessor to take special act
 
 ## TODO
 * **Code Review:** Get someone else to look at this code to make sure it is sane
-* **If Statements:** Adding directives for checking whether or not a constant or macro is defined would make for safer code.
-* **Strict Mode:** Once if statements are added, a strict mode can be added where redefining an existing program or macro causes failure.
+* **Strict Mode:** Since if statements have been added, a strict mode can be added where redefining an existing program or macro causes failure.
