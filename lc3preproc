@@ -176,7 +176,6 @@ sub parse_argv {
 
 sub process_line {
     my ($line) = @_;
-    chomp $line;
 
     # Check if the line is empty, just a comment, or a label
     # Note labels cannot start with a digit or dot
@@ -196,12 +195,12 @@ sub process_line {
         my $comment = $4;
         # Note that parameters can be quoted
         # Thus, we match ares not containing unquoted commas
-        my @parameters = ($3 =~ /("[^"]*"|[^,]+)/);
+        my @parameters = ($3 =~ /("[^"]*"|[^,]+)/g);
 
         # Process constants, trimming them as well
         # We don't check that the parameters have no spaces
         foreach my $i (0 .. $#parameters) {
-            # Trim
+            # Trim each parameter
             $parameters[$i] =~ s/^\s*|\s*$//g;
             # Just substitute in if the constant exists
             # Remember, case insensitivity
@@ -266,11 +265,10 @@ sub process_line {
 
 sub process_directive {
     my ($line, $line_it) = @_;
-    chomp $line;
 
     # Includes
     # Ensure there is only one parameter and capture it
-    if($line =~ /^#include\s+(\S+)\s*$/i) {
+    if($line =~ /^#include\s+(\S+)$/i) {
         # Just open the file for processing and continue
         open my $inch, '<', $1 
             or fail_out "Unable to open included file '$1'";
@@ -288,7 +286,7 @@ sub process_directive {
 
         # Save the matches for later
         my $mname = $1;
-        my @ps = split /\s*,\s*/, ($2 =~ s/^\s*|\s*$//r);
+        my @ps = split /\s*,\s*/, $2;
         my @ls = ();
 
         # Read in-place and check that it succeeded
@@ -317,6 +315,10 @@ sub process_directive {
 sub process_lines {
     my ($line_it) = @_;
     while(my $line = $line_it -> ()) {
+        # Preprocess the line before sending it off
+        chomp $line;
+        $line =~ s/\s*$//g;
+
         # Check if the line is a preprocessor directive
         $line =~ /^#/ ? process_directive($line, $line_it) : process_line($line);
     }
