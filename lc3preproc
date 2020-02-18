@@ -295,12 +295,23 @@ sub process_directive {
     # Constants
     # Capture the relavent values during the match
     } elsif($line =~ /^#constant\s+(\S+)\s+(.*)$/i) {
+        # Check for existing constants case-insensitively
+        if(defined $consts{lc $1}) {
+            fail_out "Redefinition of constant $1 with `$line`"
+                unless not $strict_mode;
+        }
+
         # Use lowercase for case insensitivity
         $consts{lc $1} = $2;
 
     # Macros
     # Capture the name and parameter list
     } elsif($line =~ /^#macro\s+(\S+)\s+(.*)$/i) {
+        # Check for existing macros case-insensitively
+        if(defined $macros{lc $1}) {
+            fail_out "Redefinition of macro $1 with `$line`"
+                unless not $strict_mode;
+        }
 
         # Save the matches for later
         my $mname = $1;
@@ -330,7 +341,7 @@ sub process_directive {
         # Again, read and check for success
         my @ls = ();
         if(read_until $line_it, \@ls, qr/^#endif\s*$/) {
-            fail_out "Uncosed `$line`"
+            fail_out "Uncosed `$line`";
         }
 
         if($do){

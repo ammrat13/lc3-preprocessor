@@ -18,4 +18,3 @@ These can be put in the input file to tell this preprocessor to take special act
 
 ## TODO
 * **Code Review:** Get someone else to look at this code to make sure it is sane
-* **Strict Mode:** Since if statements have been added, a strict mode can be added where redefining an existing program or macro causes failure.
