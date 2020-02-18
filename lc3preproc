@@ -177,25 +177,34 @@ sub parse_argv {
 sub process_line {
     my ($line) = @_;
 
+    # Regexes for all the components
+    my $LAB = qr/[a-zA-Z_]?\w*/;
+    my $COMD = qr/[a-zA-Z_.]\w*/;
+    my $COME = qr/(?:;.*)?/;                    # Comments are optional, so `?`
+    my $PARAMS = qr/(?:'[^']*'|"[^"]*"|[^;])*/; # Parameters are optional
+    my $PARAM = qr/(?:'[^']*'|"[^"]*"|[^,])+/;  # Parameters must have at least 
+                                                #   one character if they exist
+
     # Check if the line is empty, just a comment, or a label
     # Note labels cannot start with a digit or dot
     # Capture the comment and label if possible
-    if($line =~ /^([a-zA-Z_]?\w*)\s*((?:;.*)?)$/) {
+    if($line =~ /^($LAB)\s*($COME)$/) {
         $outh -> say("$1 $2");
     
     # Otherwise, check that the line is of the proper form
     # All lines are an optional label, then a command, then paramters, then 
     #   an optional comment
-    # We also account for quoted semicolons here
+    # We also account for single and double quoted semicolons here
     # Again, make sure to capture everything
-    } elsif($line =~ /^([a-zA-Z_]?\w*)\s+([a-zA-Z_.]\w*)\s*((?:"[^"]*"|[^;])*)((?:;.*)?)$/) {
+    } elsif($line =~ /^($LAB)\s+($COMD)\s*($PARAMS)($COME)$/) {
 
         my $label = $1;
         my $command = $2;
         my $comment = $4;
         # Note that parameters can be quoted
         # Thus, we match ares not containing unquoted commas
-        my @parameters = ($3 =~ /("[^"]*"|[^,]+)/g);
+        # Remember to account for both single and double quotes
+        my @parameters = ($3 =~ /($PARAM)/g);
 
         # Process constants, trimming them as well
         # We don't check that the parameters have no spaces
@@ -300,7 +309,7 @@ sub process_directive {
             lines  => \@ls
         };
 
-    # If Directives
+    # Ifs 
     } elsif($line =~ /^#if(n?)(c|m)\s+(\S+)$/i) {
 
         # Choose between constants and macros
