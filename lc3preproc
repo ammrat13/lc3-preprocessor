@@ -30,9 +30,11 @@ my $outn = undef;
 
 # FUNCTION PROTOTYPES: ----------
 
+sub cleanup;
 sub fail_out;
 sub array_it;
 sub file_it;
+sub read_until;
 
 sub parse_argv;
 sub process_line;
@@ -195,13 +197,8 @@ sub process_line {
         my @parameters = split /\s*,\s*/, ($3 =~ s/^\s+|\s+$//gr);
 
         # Process constants
-        # Also check that the parameters have no spaces
+        # We don't check that the parameters have no spaces
         foreach my $i (0 .. $#parameters) {
-            # Fail if a parameter has whitespace
-            if($parameters[$i] =~ /\s/) {
-                fail_out "Parameter $parameters[$i] has whitespace on `$line`";
-            }
-
             # Just substitute in if the constant exists
             # Remember, case insensitivity
             if(defined $consts{lc $parameters[$i]}) {
