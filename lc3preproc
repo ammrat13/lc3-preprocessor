@@ -30,7 +30,6 @@ my $outn = undef;
 
 # FUNCTION PROTOTYPES: ----------
 
-sub trim;
 sub cleanup;
 sub fail_out;
 sub array_it;
