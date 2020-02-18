@@ -254,7 +254,9 @@ sub process_line {
                 }
             }
 
-            # We already processed this line, so don't print
+            # We already processed this line, so don't print the whole command
+            # Just print the comment and finish this line
+            $outh -> say($comment);
             return;
         }
 
