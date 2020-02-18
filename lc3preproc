@@ -30,6 +30,7 @@ my $outn = undef;
 
 # FUNCTION PROTOTYPES: ----------
 
+sub trim;
 sub cleanup;
 sub fail_out;
 sub array_it;
@@ -180,7 +181,7 @@ sub process_line {
 
     # Check if the line is empty, just a comment, or a label
     # Capture the comment and label if possible
-    if($line =~ /^(\S*)\s*((?:;.*)?)$/) {
+    if($line =~ /^(\w*)\s*((?:;.*)?)$/) {
         $outh -> say("$1 $2");
     
     # Otherwise, check that the line is of the proper form
@@ -192,13 +193,15 @@ sub process_line {
         my $label = $1;
         my $command = $2;
         my $comment = $4;
-        # Don't do this until we have extracted all the others
-        # This will overwrite $1 .. $9 because regex
-        my @parameters = split /\s*,\s*/, ($3 =~ s/^\s+|\s+$//gr);
+        # Note that parameters can be quoted
+        # Thus, we match ares not containing unquoted commas
+        my @parameters = ($3 =~ /("[^"]*"|[^,]+)/);
 
-        # Process constants
+        # Process constants, trimming them as well
         # We don't check that the parameters have no spaces
         foreach my $i (0 .. $#parameters) {
+            # Trim
+            $parameters[$i] =~ s/^\s*|\s*$//g;
             # Just substitute in if the constant exists
             # Remember, case insensitivity
             if(defined $consts{lc $parameters[$i]}) {
