@@ -27,6 +27,9 @@ my $outh = *STDOUT; # The output file handle
 my $inn = undef;
 my $outn = undef;
 
+# Flag for strict mode -- on by default
+my $strict_mode = 1;
+
 
 # FUNCTION PROTOTYPES: ----------
 
@@ -139,18 +142,22 @@ sub parse_argv {
     while(my $arg = $arg_it -> ()) {
 
         # Check for input file
-        if($arg eq '-i') {
+        if(lc($arg) eq '-i') {
             # The next parameter should be the file name, so check that
             $inn = $arg_it -> ();
             defined $inn 
                 or fail_out "Must provide filename after `-i` parameter";
         
         # Check for the output file
-        } elsif($arg eq '-o') {
+        } elsif(lc($arg) eq '-o') {
             # Again, get the next argument and do error checking
             $outn = $arg_it -> ();
             defined $outn 
                 or fail_out "Must provide filename after `-o` parameter";
+
+        # Lazy mode
+        } elsif(lc($arg) eq '-l') {
+            $strict_mode = 0;
 
         # Default case if argument not recognized
         } else {
