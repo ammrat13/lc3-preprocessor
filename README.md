@@ -2,7 +2,7 @@
 A simple script to do preprocessing on LC-3 Assembly files. It was built for use in CS2110 at Georgia Tech. It works somewhat like the C Preprocessor in that it modifies the source file before passing it off to the compiler. Thus, using this preprocessor can make code harder to debug since lines matter in assembly, but it tries to compensate by keeping comments.
 
 ## File Notes
-Not all valid LC-3 Assembly files will work with this preprocessor. Perhaps most noteworthy is that directives and instructions must have some whitespace before them. Otherwise, the parser will simply treat them as a label.
+Not all valid LC-3 Assembly files will work with this preprocessor. Perhaps most noteworthy is that directives and instructions must have some whitespace before them. Otherwise, the parser will simply treat them as labels.
 
 ## Usage
 The script is written in Perl, which should be installed by default on most Linux distributions. To run it, first ensure that Perl is installed and that the first line of the script is `#!/absolute/path/to/perl`. Then, run it as any other program with the following options:
