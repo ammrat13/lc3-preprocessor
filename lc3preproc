@@ -170,7 +170,7 @@ sub parse_argv {
     open $inh, '<', $inn 
         or fail_out "Unable to open input file '$inn'"
         unless not defined $inn;
-    open $outh, '<', $outn 
+    open $outh, '>', $outn 
         or fail_out "Unable to open output file '$outn'"
         unless not defined $outn;
 }
